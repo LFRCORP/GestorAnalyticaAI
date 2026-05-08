@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper to check if user is hacedor
+    function isHacedor() {
+      return request.auth != null && (
+        request.auth.uid == 'jhJUq4sUNDfFl78GNJRYn5CIFv02' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'hacedor'
+      );
+    }
+
+    // Helper to check if user is approved
+    function isApproved() {
+      return request.auth != null && (
+        isHacedor() ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.approved == true
+      );
+    }
+
+    match /users/{userId} {
+      // Users can read/write their own profile
+      // Hacedores can read/write any profile
+      allow read, write: if request.auth != null && (request.auth.uid == userId || isHacedor());
+      // Admins can read all profiles to manage them
+      allow read: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    match /projects/{projectId} {
+      // Must be approved to read/write projects
+      allow read: if isApproved() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.visibility == 'public' || 
+        (resource.data.allowedUsers != null && request.auth.uid in resource.data.allowedUsers) ||
+        isHacedor()
+      );
+      
+      allow create: if isApproved();
+      
+      allow update, delete: if isApproved() && (
+        resource.data.userId == request.auth.uid || isHacedor()
+      );
+    }
+  }
+}

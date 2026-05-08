@@ -1,0 +1,24 @@
+{
+  "firestore": {
+    "database": "(default)",
+    "location": "nam5",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "auth": {
+    "providers": {
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Analytica AI",
+        "supportEmail": "sir.luisfr@gmail.com"
+      }
+    }
+  },
+  "apphosting": {
+    "backendId": "analytica-ai-backend",
+    "rootDir": "."
+  },
+  "storage": {
+    "rules": "storage.rules"
+  }
+}

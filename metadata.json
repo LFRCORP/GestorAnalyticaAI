@@ -1,0 +1,5 @@
+{
+  "name": "Proyecto Analytica AI",
+  "description": "Gestiona proyectos, carga y analiza grandes documentos PDF, y chatea con tus datos utilizando el poder de Gemini. Compara los detalles del proyecto con las regulaciones locales e identifica inconsistencias.",
+  "requestFramePermissions": []
+}
