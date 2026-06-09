@@ -46,17 +46,17 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background Decorative Elements */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-cyan-500/10 blur-[120px] rounded-full animate-pulse"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full animate-pulse delay-700"></div>
 
       <div className="max-w-md w-full relative z-10">
         <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center p-3 bg-cyan-500/10 rounded-2xl mb-4 border border-cyan-500/20">
-                <LogIn className="h-8 w-8 text-cyan-400" />
+            <div className="inline-flex items-center justify-center p-3 bg-amber-500/10 rounded-2xl mb-4 border border-amber-500/20">
+                <img src="https://i5.walmartimages.com/dfw/63fd9f59-14e2/9d304ce6-96de-4331-b8ec-c5191226d378/v1/spark-icon.svg" alt="Walmart Logo" className="h-8 w-8" />
             </div>
-            <h1 className="text-4xl font-extrabold text-white tracking-tight mb-2">Analytica <span className="text-cyan-400">AI</span></h1>
+            <h1 className="text-4xl font-extrabold text-white tracking-tight mb-2">Analytica <span className="text-amber-400">AI</span></h1>
             <p className="text-slate-400 font-medium">Gestión Documental & Auditoría Técnica</p>
         </div>
 
@@ -66,13 +66,13 @@ const Login: React.FC = () => {
             <div className="flex border-b border-slate-700">
                 <button 
                     onClick={() => setMode('login')}
-                    className={`flex-1 py-4 text-sm font-bold transition-all ${mode === 'login' ? 'text-white border-b-2 border-cyan-400 bg-cyan-400/5' : 'text-slate-500 hover:text-slate-300'}`}
+                    className={`flex-1 py-4 text-sm font-bold transition-all ${mode === 'login' ? 'text-white border-b-2 border-[#0071ce] bg-[#0071ce]/5' : 'text-slate-500 hover:text-slate-300'}`}
                 >
                     INICIAR SESIÓN
                 </button>
                 <button 
                     onClick={() => setMode('register')}
-                    className={`flex-1 py-4 text-sm font-bold transition-all ${mode === 'register' ? 'text-white border-b-2 border-cyan-400 bg-cyan-400/5' : 'text-slate-500 hover:text-slate-300'}`}
+                    className={`flex-1 py-4 text-sm font-bold transition-all ${mode === 'register' ? 'text-white border-b-2 border-[#0071ce] bg-[#0071ce]/5' : 'text-slate-500 hover:text-slate-300'}`}
                 >
                     CREAR CUENTA
                 </button>
@@ -165,7 +165,7 @@ const Login: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-cyan-900/20 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                className="w-full bg-[#0071ce] hover:bg-blue-600 text-white font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-blue-900/20 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
               >
                 {isLoading ? (
                   <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>

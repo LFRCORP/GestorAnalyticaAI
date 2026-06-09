@@ -37,8 +37,7 @@ export const useFirestoreProjects = () => {
     let q;
     if (isHacedor) {
       q = query(
-        collection(db, 'projects'),
-        orderBy('updatedAt', 'desc')
+        collection(db, 'projects')
       );
     } else {
       q = query(
@@ -46,14 +45,20 @@ export const useFirestoreProjects = () => {
         or(
           where('userId', '==', user.uid),
           where('visibility', '==', 'public'),
-          where('allowedUsers', 'array-contains', user.uid)
-        ),
-        orderBy('updatedAt', 'desc')
+          where('allowedUsers', 'array-contains', user.email)
+        )
       );
     }
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const projectsData = snapshot.docs.map(doc => doc.data() as Project);
+      let projectsData = snapshot.docs.map(doc => doc.data() as Project);
+      
+      // Filter out soft-deleted projects for normal users
+      if (!isHacedor) {
+        projectsData = projectsData.filter(p => !p.deleted);
+      }
+      
+      projectsData.sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime());
       setProjects(projectsData);
       setLoading(false);
     }, (error) => {
@@ -64,11 +69,48 @@ export const useFirestoreProjects = () => {
     return () => unsubscribe();
   }, [user, userData]);
 
+  /**
+   * Strips base64 image data from documents before saving to Firestore.
+   * Images are already stored in Firebase Storage (storageUrl), so the
+   * large inlineData.data blobs are not needed in the database and would
+   * exceed Firestore's 1MB document limit, causing silent write failures.
+   */
+  const sanitizeForFirestore = (data: Partial<Project>): Partial<Project> => {
+    const sanitized = { ...data };
+
+    if (sanitized.documents) {
+      sanitized.documents = sanitized.documents.map(doc => ({
+        ...doc,
+        // Strip base64 page data — images live in Storage (storageUrl)
+        pages: (doc.pages || []).map(page => ({
+          inlineData: {
+            data: '',  // cleared — use storageUrl to re-fetch when needed
+            mimeType: page.inlineData?.mimeType || 'image/jpeg',
+          },
+          storageUrl: page.storageUrl,
+        })),
+        // Also strip base64 from historical versions
+        versions: (doc.versions || []).map(v => ({
+          ...v,
+          pages: (v.pages || []).map(page => ({
+            inlineData: {
+              data: '',
+              mimeType: page.inlineData?.mimeType || 'image/jpeg',
+            },
+            storageUrl: page.storageUrl,
+          })),
+        })),
+      }));
+    }
+
+    return sanitized;
+  };
+
   const addProject = async (project: Project) => {
     if (!user) return;
     const projectRef = doc(db, 'projects', project.id);
     await setDoc(projectRef, {
-      ...project,
+      ...sanitizeForFirestore(project) as Project,
       userId: user.uid,
       visibility: project.visibility || 'private',
       createdAt: new Date().toISOString(),
@@ -80,16 +122,42 @@ export const useFirestoreProjects = () => {
     if (!user) return;
     const projectRef = doc(db, 'projects', projectId);
     await updateDoc(projectRef, {
-      ...data,
+      ...sanitizeForFirestore(data),
       updatedAt: new Date().toISOString()
     });
   };
 
+
   const deleteProject = async (projectId: string) => {
     if (!user) return;
     const projectRef = doc(db, 'projects', projectId);
-    await deleteDoc(projectRef);
+    const existing = projects.find(p => p.id === projectId);
+    const isHacedor = user.uid === 'jhJUq4sUNDfFl78GNJRYn5CIFv02' || userData?.role === 'hacedor';
+    
+    if (existing?.deleted && isHacedor) {
+      // Permanent delete
+      await deleteDoc(projectRef);
+    } else {
+      // Soft delete
+      await updateDoc(projectRef, {
+        deleted: true,
+        deletedAt: new Date().toISOString(),
+        deletedBy: user.uid,
+        updatedAt: new Date().toISOString()
+      });
+    }
   };
 
-  return { projects, loading, addProject, updateProject, deleteProject };
+  const restoreProject = async (projectId: string) => {
+    if (!user) return;
+    const projectRef = doc(db, 'projects', projectId);
+    await updateDoc(projectRef, {
+      deleted: false,
+      deletedAt: null,
+      deletedBy: null,
+      updatedAt: new Date().toISOString()
+    });
+  };
+
+  return { projects, loading, addProject, updateProject, deleteProject, restoreProject };
 };
