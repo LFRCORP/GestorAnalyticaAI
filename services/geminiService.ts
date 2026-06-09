@@ -2,9 +2,12 @@
 import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { Document, AnalysisResult, ChatMessage } from '../types';
 
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+const rawApiKey = import.meta.env.VITE_GEMINI_API_KEY
+  || (typeof process !== 'undefined' && (process.env?.GEMINI_API_KEY || process.env?.API_KEY))
+  || '';
+const apiKey = typeof rawApiKey === 'string' ? rawApiKey.trim() : '';
 if (!apiKey) {
-  throw new Error("VITE_GEMINI_API_KEY environment variable not set");
+  throw new Error("Gemini API key not configured. Set VITE_GEMINI_API_KEY in apphosting.yaml secrets.");
 }
 
 const ai = new GoogleGenAI({ apiKey });
@@ -200,6 +203,28 @@ const analysisSchema = {
 export const analyzeDocuments = async (docs: Document[], location: { city: string; state: string; }, historySummary?: string): Promise<{ analysis: AnalysisResult, sources: { web?: { uri: string; title?: string } }[], normativaReport: string }> => {
     const searchModel = ai.models.generateContent;
     
+    /**
+     * Strips characters with code points > U+00FF (outside ISO-8859-1).
+     * The @google/genai SDK encodes certain request metadata in HTTP headers.
+     * The browser's Headers API rejects any value containing non-Latin-1
+     * characters (code points > 255), throwing "non ISO-8859-1 code point".
+     * Characters like ™ (U+2122), — (U+2014), • (U+2022), € (U+20AC) can
+     * appear in Google Search results or PDF-extracted text.
+     */
+    const sanitizeText = (text: string): string => {
+        if (!text) return '';
+        return text
+            // Replace common Unicode punctuation with ASCII equivalents
+            .replace(/[\u2018\u2019]/g, "'")
+            .replace(/[\u201C\u201D]/g, '"')
+            .replace(/[\u2013\u2014]/g, '-')
+            .replace(/[\u2026]/g, '...')
+            .replace(/[\u2022\u2023\u25AA\u25BA]/g, '*')
+            .replace(/\u00A0/g, ' ')
+            // Remove any remaining characters outside Latin-1 range (> U+00FF)
+            .replace(/[^\u0000-\u00FF]/g, ' ');
+    };
+
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
     const executeWithRetry = async (apiCall: () => Promise<unknown>, maxRetries = 3, baseDelay = 15000) => {
@@ -249,7 +274,7 @@ Sintetiza los hallazgos en un informe técnico estructurado y detallado. Pon esp
         contents: regulationsPrompt,
         config: { tools: [{ googleSearch: {} }] }
     })) as { text: string, candidates?: { groundingMetadata?: { groundingChunks?: { web?: { uri: string; title?: string } }[] } }[] };
-    const localRegulations = regulationsResponse.text;
+    const localRegulations = sanitizeText(regulationsResponse.text);
     const regulationSources = regulationsResponse.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
 
     // 2. Analyze documents against regulations using multimodal capabilities (OCR)
@@ -528,7 +553,7 @@ Sintetiza los hallazgos en un informe técnico estructurado y detallado. Pon esp
     for (const doc of docs) {
         // 1. Add Text Content (with truncation if necessary)
         if (doc.textContent) {
-            let textToAdd = doc.textContent;
+            let textToAdd = sanitizeText(doc.textContent);
             if (totalTextLength + textToAdd.length > MAX_TOTAL_TEXT_LENGTH) {
                 const allowedLength = Math.max(0, MAX_TOTAL_TEXT_LENGTH - totalTextLength);
                 textToAdd = textToAdd.substring(0, allowedLength) + "\n[TEXTO TRUNCADO POR LÍMITE DE TAMAÑO]";
